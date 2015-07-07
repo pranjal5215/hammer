@@ -1,4 +1,6 @@
-# vitess_pool_v2
+# Hammer
+
+Hammer is vitess pools's forked implementation along with a basic wrapper
 
 vitess pool implementation has changed since last fork (https://github.com/vireshas/minimal_vitess_pool); this is  version with reforking,
 
