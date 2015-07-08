@@ -58,7 +58,12 @@ type resourceWrapper struct {
 // You cannot resize the pool beyond maxCap.
 // If a resource is unused beyond idleTimeout, it's discarded.
 // An idleTimeout of 0 means that there is no timeout.
-func NewResourcePool(factory Factory, capacity, maxCap int, idleTimeout time.Duration) *ResourcePool {
+func NewResourcePool(factory Factory, capacity, idleTimeout time.Duration) *ResourcePool {
+
+	// For simplifying API we are removing maxCapacity from API 
+	// and explicitly denoting 10 times the cacpcity.
+	maxCap := 10 * capacity
+
 	if capacity <= 0 || maxCap <= 0 || capacity > maxCap {
 		panic(errors.New("invalid/out of range capacity"))
 	}
