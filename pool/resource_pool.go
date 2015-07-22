@@ -4,7 +4,7 @@
 
 // Package hammerpool provides functionality to manage and reuse resources
 // like connections.
-package hammerpool
+package pool
 
 import (
 	"errors"
