@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"time"
 
-	"sync2"
+	"github.com/pranjal5215/hammerpool/sync2"
 	"golang.org/x/net/context"
 )
 
