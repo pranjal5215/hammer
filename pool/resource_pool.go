@@ -142,8 +142,6 @@ func (rp *ResourcePool) get(ctx context.Context, wait bool) (resource Resource, 
 		if err != nil {
 			rp.resources <- resourceWrapper{}
 		}
-	} else {
-		fmt.Printf("Reused conn %v\n", wrapper.timeUsed)
 	}
 	wrapper.timeUsed = time.Now()
 	return wrapper.resource, err
