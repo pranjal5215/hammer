@@ -38,7 +38,7 @@ type ResourcePool struct {
 	resources   chan resourceWrapper
 	factory     Factory
 	capacity    sync2.AtomicInt64
-	idleTimeout sync2.AtomicDuration
+	idleTimeout time.Duration
 
 	// stats
 	waitCount sync2.AtomicInt64
@@ -66,7 +66,7 @@ func NewResourcePool(factory Factory, capacity, maxCap int, idleTimeout time.Dur
 		resources:   make(chan resourceWrapper, maxCap),
 		factory:     factory,
 		capacity:    sync2.AtomicInt64(capacity),
-		idleTimeout: sync2.AtomicDuration(idleTimeout),
+		idleTimeout: idleTimeout,
 	}
 	for i := 0; i < capacity; i++ {
 		rp.resources <- resourceWrapper{}
@@ -112,24 +112,23 @@ func (rp *ResourcePool) get(ctx context.Context, wait bool) (resource Resource, 
 		if !wait {
 			return nil, nil
 		}
-		startTime := time.Now()
-		select {
-		case wrapper, ok = <-rp.resources:
-		case <-ctx.Done():
-			return nil, ErrTimeout
+
+		if rp.idleTimeout.Seconds() == 0.0 {
+			wrapper, ok = <-rp.resources
+		} else {
+			tmr := time.NewTimer(rp.idleTimeout)
+			defer tmr.Stop()
+			select {
+			case wrapper, ok = <-rp.resources:
+			case <-tmr.C:
+				return nil, ErrTimeout
+			}
 		}
-		rp.recordWait(startTime)
 	}
 	if !ok {
 		return nil, ErrClosed
 	}
 
-	// Unwrap
-	idleTimeout := rp.idleTimeout.Get()
-	if wrapper.resource != nil && idleTimeout > 0 && wrapper.timeUsed.Add(idleTimeout).Sub(time.Now()) < 0 {
-		wrapper.resource.Close()
-		wrapper.resource = nil
-	}
 	if wrapper.resource == nil {
 		wrapper.resource, err = rp.factory()
 		if err != nil {
@@ -205,11 +204,6 @@ func (rp *ResourcePool) recordWait(start time.Time) {
 	rp.waitTime.Add(time.Now().Sub(start))
 }
 
-// SetIdleTimeout sets the idle timeout.
-func (rp *ResourcePool) SetIdleTimeout(idleTimeout time.Duration) {
-	rp.idleTimeout.Set(idleTimeout)
-}
-
 // StatsJSON returns the stats in JSON format.
 func (rp *ResourcePool) StatsJSON() string {
 	c, a, mx, wc, wt, it := rp.Stats()
@@ -248,5 +242,5 @@ func (rp *ResourcePool) WaitTime() time.Duration {
 
 // IdleTimeout returns the idle timeout.
 func (rp *ResourcePool) IdleTimeout() time.Duration {
-	return rp.idleTimeout.Get()
+	return rp.idleTimeout
 }
