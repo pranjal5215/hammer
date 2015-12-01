@@ -69,7 +69,9 @@ func NewResourcePool(factory Factory, capacity, maxCap int, idleTimeout time.Dur
 		idleTimeout: idleTimeout,
 	}
 	for i := 0; i < capacity; i++ {
-		rp.resources <- resourceWrapper{}
+		rp.resources <- resourceWrapper{
+			timeUsed: time.Now(),
+		}
 	}
 	return rp
 }
@@ -129,12 +131,21 @@ func (rp *ResourcePool) get(ctx context.Context, wait bool) (resource Resource, 
 		return nil, ErrClosed
 	}
 
+	// Unwrap
+	idleTimeout := rp.idleTimeout.Get()
+	if wrapper.resource != nil && idleTimeout > 0 && wrapper.timeUsed.Add(idleTimeout).Sub(time.Now()) < 0 {
+		wrapper.resource.Close()
+		wrapper.resource = nil
+	}
 	if wrapper.resource == nil {
 		wrapper.resource, err = rp.factory()
 		if err != nil {
 			rp.resources <- resourceWrapper{}
 		}
+	} else {
+		fmt.Printf("Reused conn %v\n", wrapper.timeUsed)
 	}
+	wrapper.timeUsed = time.Now()
 	return wrapper.resource, err
 }
 
