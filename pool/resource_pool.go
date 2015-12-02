@@ -132,8 +132,7 @@ func (rp *ResourcePool) get(ctx context.Context, wait bool) (resource Resource, 
 	}
 
 	// Unwrap
-	idleTimeout := rp.idleTimeout.Get()
-	if wrapper.resource != nil && idleTimeout > 0 && wrapper.timeUsed.Add(idleTimeout).Sub(time.Now()) < 0 {
+	if wrapper.resource != nil && rp.idleTimeout > 0 && wrapper.timeUsed.Add(rp.idleTimeout).Sub(time.Now()) < 0 {
 		wrapper.resource.Close()
 		wrapper.resource = nil
 	}
